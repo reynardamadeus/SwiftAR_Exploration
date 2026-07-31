@@ -6,13 +6,35 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		F2A4DB33301CFE21003C3959 /* project.yaml in Resources */ = {isa = PBXBuildFile; fileRef = F2A4DB32301CFE17003C3959 /* project.yaml */; };
+		F2A4DB37301CFF44003C3959 /* README.MD in Resources */ = {isa = PBXBuildFile; fileRef = F2A4DB36301CFF44003C3959 /* README.MD */; };
+		F2A4DB39301CFF9E003C3959 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = F2A4DB38301CFF97003C3959 /* .gitignore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		F2A4DA5E3017A0E2003C3959 /* ARTutorial.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ARTutorial.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F2A4DB32301CFE17003C3959 /* project.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = project.yaml; sourceTree = "<group>"; };
+		F2A4DB36301CFF44003C3959 /* README.MD */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.MD; sourceTree = "<group>"; };
+		F2A4DB38301CFF97003C3959 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		F2A4DA6D3017A1B6003C3959 /* Exceptions for "ARTutorial" folder in "ARTutorial" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = F2A4DA5D3017A0E2003C3959 /* ARTutorial */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		F2A4DA603017A0E2003C3959 /* ARTutorial */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				F2A4DA6D3017A1B6003C3959 /* Exceptions for "ARTutorial" folder in "ARTutorial" target */,
+			);
 			path = ARTutorial;
 			sourceTree = "<group>";
 		};
@@ -32,6 +54,9 @@
 		F2A4DA553017A0E2003C3959 = {
 			isa = PBXGroup;
 			children = (
+				F2A4DB36301CFF44003C3959 /* README.MD */,
+				F2A4DB32301CFE17003C3959 /* project.yaml */,
+				F2A4DB38301CFF97003C3959 /* .gitignore */,
 				F2A4DA603017A0E2003C3959 /* ARTutorial */,
 				F2A4DA5F3017A0E2003C3959 /* Products */,
 			);
@@ -109,6 +134,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F2A4DB33301CFE21003C3959 /* project.yaml in Resources */,
+				F2A4DB37301CFF44003C3959 /* README.MD in Resources */,
+				F2A4DB39301CFF9E003C3959 /* .gitignore in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -251,11 +279,15 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CWW22WYZK6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ARTutorial/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "To Use Augmented Realtiy, you must allow access to camera";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arkit;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -282,11 +314,15 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CWW22WYZK6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ARTutorial/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "To Use Augmented Realtiy, you must allow access to camera";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arkit;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (

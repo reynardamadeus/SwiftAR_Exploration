@@ -1,0 +1,41 @@
+#
+//  project.yaml
+//  ARTutorial
+//
+//  Created by Reynard Amadeus  on 31/07/26.
+//
+
+name: ARTutorial
+
+options:
+  bundleIdPrefix: com.wc
+  
+
+
+targets:
+  Hijauin:
+    type: application
+    platform: iOS
+    
+
+    deploymentTarget: "26.0"
+        
+    sources:
+      - Hijauin/
+
+    resources:
+      - Hijauin/Assets.xcassets
+
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.wc.hijauin
+
+    info:
+      path: Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+
+    scheme:
+      testTargets: []
