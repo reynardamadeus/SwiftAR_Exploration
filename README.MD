@@ -1,4 +1,4 @@
-# Hijauin
+# AR Tutorial
 ## Description
 A platform for volunteering program exploration and application!
 
