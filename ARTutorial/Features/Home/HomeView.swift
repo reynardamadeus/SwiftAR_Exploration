@@ -32,6 +32,13 @@ struct HomeView: View {
                     }
                 }
 
+                Text("3D Robot Editor")
+                List{
+                    NavigationLink(destination: RobotEditorView().ignoresSafeArea(.all)){
+                        Text("Build a Robot")
+                    }
+                }
+
             }.navigationTitle("Try AR Experience!")
             
         }
