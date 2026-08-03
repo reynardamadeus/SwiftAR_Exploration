@@ -9,14 +9,12 @@
 /* Begin PBXBuildFile section */
 		F2A4DB33301CFE21003C3959 /* project.yaml in Resources */ = {isa = PBXBuildFile; fileRef = F2A4DB32301CFE17003C3959 /* project.yaml */; };
 		F2A4DB37301CFF44003C3959 /* README.MD in Resources */ = {isa = PBXBuildFile; fileRef = F2A4DB36301CFF44003C3959 /* README.MD */; };
-		F2A4DB39301CFF9E003C3959 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = F2A4DB38301CFF97003C3959 /* .gitignore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		F2A4DA5E3017A0E2003C3959 /* ARTutorial.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ARTutorial.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2A4DB32301CFE17003C3959 /* project.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = project.yaml; sourceTree = "<group>"; };
 		F2A4DB36301CFF44003C3959 /* README.MD */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.MD; sourceTree = "<group>"; };
-		F2A4DB38301CFF97003C3959 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -56,7 +54,6 @@
 			children = (
 				F2A4DB36301CFF44003C3959 /* README.MD */,
 				F2A4DB32301CFE17003C3959 /* project.yaml */,
-				F2A4DB38301CFF97003C3959 /* .gitignore */,
 				F2A4DA603017A0E2003C3959 /* ARTutorial */,
 				F2A4DA5F3017A0E2003C3959 /* Products */,
 			);
@@ -136,7 +133,6 @@
 			files = (
 				F2A4DB33301CFE21003C3959 /* project.yaml in Resources */,
 				F2A4DB37301CFF44003C3959 /* README.MD in Resources */,
-				F2A4DB39301CFF9E003C3959 /* .gitignore in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -295,7 +291,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = project.ARTutorial;
+				PRODUCT_BUNDLE_IDENTIFIER = project.ARTutorialPOCath;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -330,7 +326,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = project.ARTutorial;
+				PRODUCT_BUNDLE_IDENTIFIER = project.ARTutorialPOCath;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
