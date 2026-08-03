@@ -32,6 +32,16 @@ struct HomeView: View {
                     }
                 }
 
+                Text("Physics Interaction PoC")
+                List{
+                    NavigationLink(destination: PhysicsPlaygroundScreenView()){
+                        Text("Robot Physics Playground").foregroundStyle(Color.blue)
+                    }
+                    NavigationLink(destination: EnvironmentScanScreenView()){
+                        Text("Scan Real Environment").foregroundStyle(Color.green)
+                    }
+                }
+
             }.navigationTitle("Try AR Experience!")
             
         }
