@@ -130,8 +130,6 @@ enum RobotGeometry {
     static let bodyLift: Float = 0.3
     /// Wheel-center height: wheels sit near the ground, below the lifted body.
     static let wheelY: Float = 0.08
-    /// Whole-robot scale used in AR so it reads as a toy on the floor.
-    static let arScale: Float = 0.1
 
     /// Body center in world space.
     static func bodyCenter(bodySize: RobotConfig.BodySize) -> SIMD3<Float> {

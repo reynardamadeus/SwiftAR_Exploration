@@ -107,10 +107,12 @@ final class RobotBuilder {
 
     // MARK: Placement (editor vs AR)
 
-    /// Move the whole robot to a world transform (AR tap-to-place) at toy scale.
+    /// Move the whole robot to a world transform (AR tap-to-place) at real scale.
+    /// Body dimensions are already in metres and ARKit's world units are metres,
+    /// so a 1:1 scale makes a "1 m" robot render as a true 1 m object on the floor.
     func place(at matrix: simd_float4x4) {
         var transform = Transform(matrix: matrix)
-        transform.scale = SIMD3<Float>(repeating: RobotGeometry.arScale) // AR: ~0.1 toy size
+        transform.scale = SIMD3<Float>(repeating: 1.0)
         root.transform = transform
     }
 
