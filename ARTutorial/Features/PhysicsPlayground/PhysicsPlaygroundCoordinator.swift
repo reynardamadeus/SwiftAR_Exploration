@@ -83,7 +83,7 @@ final class PhysicsPlaygroundCoordinator {
         let hits = arView.scene.raycast(origin: ray.origin,
                                         direction: ray.direction,
                                         length: 10,
-                                        query: .nearest)
+                                        query: .all)
 
         // Ignore hits on the robot itself; any surface or pushable box is a valid goal.
         guard let hit = hits.first(where: { $0.entity != playground.robot }) else {
@@ -94,6 +94,7 @@ final class PhysicsPlaygroundCoordinator {
         if var robot = playground.robot.components[PhysicsRobotComponent.self] {
             robot.targetPosition = hit.position   // world space; only X/Z is used
             playground.robot.components.set(robot)
+            print("[Robot] target set to \(hit.position) on \(type(of: hit.entity))")
         }
     }
 }

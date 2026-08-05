@@ -3,16 +3,20 @@
 //  ARTutorial
 //
 //  Drives the robot toward its tap target using physics, never by scripting Y to
-//  locomote. Adds two behaviours on top of plain steering:
+//  locomote. Locomotion is applied as *impulses* on a dynamic body rather than by
+//  writing `linearVelocity` directly: a settled dynamic body goes to sleep, and a
+//  sleeping body ignores velocity writes — so a velocity-only robot never starts
+//  moving. Each frame we apply the impulse needed to reach the target horizontal
+//  velocity, which both wakes the body and moves it.
 //
 //   • Step-over  – a low obstacle (top ≤ 1/4 of the robot's height) gets a small
-//                  upward velocity nudge so the robot mounts it; taller obstacles
-//                  are left to block via collision.
+//                  upward impulse so the robot mounts it; taller obstacles are left
+//                  to block via collision.
 //   • Fall       – while airborne the robot keeps its momentum and lets gravity
 //                  arc it down naturally (no forced horizontal drive). If it falls
 //                  completely off the mapped world it is respawned at its start.
 //
-//  All vertical motion is produced by the physics solver or by *velocity* nudges;
+//  All vertical motion is produced by the physics solver or by *impulse* nudges;
 //  the only place a position is written is the off-map respawn safeguard.
 //
 //  Reusable RealityKit `System`; register once with `registerSystem()`.
@@ -20,6 +24,10 @@
 
 import RealityKit
 import Foundation
+
+/// Anything the system can push around: has a physics body (for impulses) and a
+/// motion component (to read current velocity).
+private typealias PhysicsDrivable = Entity & HasPhysicsBody & HasPhysicsMotion
 
 final class RobotControlSystem: System {
 
@@ -42,47 +50,71 @@ final class RobotControlSystem: System {
         didBootstrap = true
     }
 
+    // Temporary diagnostics: throttled so the console stays readable.
+    private static var frame: UInt64 = 0
+
     func update(context: SceneUpdateContext) {
         let scene = context.scene
+        Self.frame &+= 1
+        let shouldLog = Self.frame % 30 == 0   // ~ twice per second
+
+        var matched = 0
         for entity in scene.performQuery(Self.query) {
+            matched += 1
             guard
                 var robot = entity.components[PhysicsRobotComponent.self],
-                var motion = entity.components[PhysicsMotionComponent.self]
+                let motion = entity.components[PhysicsMotionComponent.self]
             else { continue }
 
+            let castable = entity is PhysicsDrivable
+            guard let body = entity as? PhysicsDrivable else {
+                if shouldLog { print("[Robot] ⚠️ entity is NOT PhysicsDrivable (cast failed) — can't apply impulses") }
+                continue
+            }
+
+            let mass = entity.components[PhysicsBodyComponent.self]?.massProperties.mass ?? 1
+            let velocity = motion.linearVelocity
             let feet = entity.position(relativeTo: nil)
             let grounded = isGrounded(entity: entity, feet: feet, robot: robot, scene: scene)
 
-            steer(entity: entity, feet: feet, grounded: grounded,
-                  robot: &robot, motion: &motion, scene: scene)
-
-            if robot.keepsUpright {
-                stabiliseUpright(entity: entity, motion: &motion)
+            if shouldLog {
+                let target = robot.targetPosition.map { String(format: "(%.2f,%.2f)", $0.x, $0.z) } ?? "nil"
+                print(String(format: "[Robot] grounded=%@ y=%.3f target=%@ vel=(%.2f,%.2f,%.2f) mass=%.2f castable=%@",
+                             grounded ? "T" : "F", feet.y, target,
+                             velocity.x, velocity.y, velocity.z, mass, castable ? "T" : "F"))
             }
 
-            respawnIfFallenOffMap(entity: entity, feet: feet, robot: &robot, motion: &motion)
+            steer(body: body, feet: feet, grounded: grounded,
+                  robot: &robot, velocity: velocity, mass: mass, scene: scene)
 
-            entity.components.set(motion)
+            if robot.keepsUpright {
+                stabiliseUpright(entity: entity)
+            }
+
+            respawnIfFallenOffMap(entity: entity, feet: feet, robot: &robot)
+
             entity.components.set(robot)
+        }
+
+        if shouldLog && matched == 0 {
+            print("[Robot] ⚠️ system running but query matched 0 robots (component/registration issue)")
         }
     }
 
     // MARK: - Steering + step-over
 
     private func steer(
-        entity: Entity,
+        body: PhysicsDrivable,
         feet: SIMD3<Float>,
         grounded: Bool,
         robot: inout PhysicsRobotComponent,
-        motion: inout PhysicsMotionComponent,
+        velocity: SIMD3<Float>,
+        mass: Float,
         scene: Scene
     ) {
         guard let target = robot.targetPosition else {
             // Idle: only damp horizontal drift when grounded; if airborne let it fall.
-            if grounded {
-                motion.linearVelocity.x = 0
-                motion.linearVelocity.z = 0
-            }
+            if grounded { brakeHorizontal(body: body, velocity: velocity, mass: mass) }
             return
         }
 
@@ -90,8 +122,7 @@ final class RobotControlSystem: System {
         let distance = simd_length(toTarget)
 
         if distance <= robot.arriveThreshold {
-            motion.linearVelocity.x = 0
-            motion.linearVelocity.z = 0
+            brakeHorizontal(body: body, velocity: velocity, mass: mass)
             robot.targetPosition = nil
             return
         }
@@ -102,41 +133,64 @@ final class RobotControlSystem: System {
         // horizontal drive. This makes falls off ledges look physically believable.
         guard grounded else { return }
 
-        motion.linearVelocity.x = direction.x * robot.moveSpeed
-        motion.linearVelocity.z = direction.z * robot.moveSpeed
+        // Impulse to reach cruise velocity in the travel direction. Applying it via
+        // the physics body (rather than writing linearVelocity) wakes the body and
+        // lets the solver mediate collisions/friction.
+        driveHorizontal(body: body,
+                        toward: SIMD2<Float>(direction.x, direction.z) * robot.moveSpeed,
+                        velocity: velocity, mass: mass)
 
-        faceDirection(entity: entity, direction: direction, responsiveness: robot.turnResponsiveness)
+        faceDirection(entity: body, direction: direction, responsiveness: robot.turnResponsiveness)
 
         // Step-over: if a low ledge is directly ahead, hop just enough to mount it.
-        applyStepAssist(feet: feet, direction: direction, robot: robot, motion: &motion,
-                        entity: entity, scene: scene)
+        applyStepAssist(feet: feet, direction: direction, robot: robot,
+                        body: body, velocity: velocity, mass: mass, scene: scene)
+    }
+
+    /// Applies the impulse needed to bring horizontal velocity to `targetXZ`.
+    private func driveHorizontal(body: PhysicsDrivable, toward targetXZ: SIMD2<Float>,
+                                 velocity: SIMD3<Float>, mass: Float) {
+        let impulse = SIMD3<Float>((targetXZ.x - velocity.x) * mass, 0,
+                                   (targetXZ.y - velocity.z) * mass)
+        body.applyLinearImpulse(impulse, relativeTo: nil)
+    }
+
+    /// Cancels horizontal drift with a single braking impulse.
+    private func brakeHorizontal(body: PhysicsDrivable, velocity: SIMD3<Float>, mass: Float) {
+        let impulse = SIMD3<Float>(-velocity.x * mass, 0, -velocity.z * mass)
+        body.applyLinearImpulse(impulse, relativeTo: nil)
     }
 
     /// Detects a walkable surface just ahead and, if it sits within the climbable
-    /// step height, applies a brief upward velocity so the robot mounts it.
+    /// step height, applies a brief upward impulse so the robot mounts it.
     private func applyStepAssist(
         feet: SIMD3<Float>,
         direction: SIMD3<Float>,
         robot: PhysicsRobotComponent,
-        motion: inout PhysicsMotionComponent,
-        entity: Entity,
+        body: PhysicsDrivable,
+        velocity: SIMD3<Float>,
+        mass: Float,
         scene: Scene
     ) {
         // Only nudge when essentially settled vertically (not mid-hop / mid-fall).
-        guard abs(motion.linearVelocity.y) < 0.15 else { return }
+        guard abs(velocity.y) < 0.15 else { return }
 
         // Probe point just in front of the body, dropped from above.
         let ahead = SIMD3<Float>(feet.x + direction.x * (robot.bodyRadius + 0.012),
                                  feet.y + robot.bodyHeight,
                                  feet.z + direction.z * (robot.bodyRadius + 0.012))
+        // `.all`, not `.nearest`: the probe can start inside the robot's own collider,
+        // so we need every hit in order to skip the robot and find the surface beneath.
         let hits = scene.raycast(origin: ahead, direction: [0, -1, 0],
-                                 length: robot.bodyHeight * 2, query: .nearest)
-        guard let hit = firstNonRobot(hits, robot: entity) else { return }
+                                 length: robot.bodyHeight * 2, query: .all)
+        guard let hit = firstNonRobot(hits, robot: body) else { return }
 
         let stepUp = hit.position.y - feet.y
         if stepUp > Self.minStepHeight && stepUp <= robot.maxStepHeight {
-            // Upward velocity to clear the ledge; forward velocity carries it over.
-            motion.linearVelocity.y = robot.climbBoost
+            // Upward impulse to reach the climb-boost velocity; forward motion carries
+            // it over, then physics lands it on top of the ledge.
+            let impulse = SIMD3<Float>(0, (robot.climbBoost - velocity.y) * mass, 0)
+            body.applyLinearImpulse(impulse, relativeTo: nil)
         }
     }
 
@@ -147,8 +201,12 @@ final class RobotControlSystem: System {
                             robot: PhysicsRobotComponent, scene: Scene) -> Bool {
         let origin = SIMD3<Float>(feet.x, feet.y + 0.01, feet.z)
         let length = robot.bodyHeight * robot.groundProbeRatio + 0.02
+        // `.all`, not `.nearest`: this origin sits inside the robot's own collision box,
+        // so `.nearest` would only ever return the robot itself (then filtered → nil),
+        // making the robot think it's permanently airborne. `.all` lets us skip the
+        // robot and see the ground below it.
         let hits = scene.raycast(origin: origin, direction: [0, -1, 0],
-                                 length: length, query: .nearest)
+                                 length: length, query: .all)
         return firstNonRobot(hits, robot: entity) != nil
     }
 
@@ -160,15 +218,17 @@ final class RobotControlSystem: System {
     private func respawnIfFallenOffMap(
         entity: Entity,
         feet: SIMD3<Float>,
-        robot: inout PhysicsRobotComponent,
-        motion: inout PhysicsMotionComponent
+        robot: inout PhysicsRobotComponent
     ) {
         guard let start = robot.startPosition else { return }
         if feet.y < start.y - robot.fallRecoveryDepth {
             entity.setPosition(start, relativeTo: nil)
             entity.orientation = simd_quatf(angle: 0, axis: [0, 1, 0])
-            motion.linearVelocity = .zero
-            motion.angularVelocity = .zero
+            if var motion = entity.components[PhysicsMotionComponent.self] {
+                motion.linearVelocity = .zero
+                motion.angularVelocity = .zero
+                entity.components.set(motion)
+            }
             robot.targetPosition = nil
         }
     }
@@ -183,9 +243,14 @@ final class RobotControlSystem: System {
         entity.orientation = simd_slerp(entity.orientation, desired, t)
     }
 
-    private func stabiliseUpright(entity: Entity, motion: inout PhysicsMotionComponent) {
-        motion.angularVelocity.x = 0
-        motion.angularVelocity.z = 0
+    private func stabiliseUpright(entity: Entity) {
+        // Re-read the component so the driving impulse applied this frame is preserved;
+        // we only cancel pitch/roll spin and snap orientation back to yaw-only.
+        if var motion = entity.components[PhysicsMotionComponent.self] {
+            motion.angularVelocity.x = 0
+            motion.angularVelocity.z = 0
+            entity.components.set(motion)
+        }
         let yaw = currentYaw(of: entity.orientation)
         entity.orientation = simd_quatf(angle: yaw, axis: [0, 1, 0])
     }

@@ -24,6 +24,12 @@
 import RealityKit
 import UIKit
 
+/// A robot that owns physics + motion so `RobotControlSystem` can drive it with
+/// force/impulse APIs. A plain `Entity` isn't `HasPhysics`, so it can't be driven
+/// by impulses — and writing `linearVelocity` to a *sleeping* dynamic body is
+/// ignored, which is why a velocity-only robot never starts walking.
+final class RobotEntity: Entity, HasPhysicsBody, HasPhysicsMotion {}
+
 /// The assembled playground plus a handle to the robot the coordinator steers.
 struct PhysicsPlayground {
     /// Root entity holding the whole playground. Owns the physics simulation.
@@ -187,7 +193,7 @@ enum PhysicsSceneFactory {
     /// collision-box maths in clean world units. Exposed so real-world scan mode
     /// can spawn the same robot without the synthetic playground.
     static func makeRobot() -> Entity {
-        let container = Entity()
+        let container = RobotEntity()
 
         // Size of the robot's collision box (world metres). Slightly slimmer than
         // the mesh for a stable footprint; height matches `robotHeight`.
