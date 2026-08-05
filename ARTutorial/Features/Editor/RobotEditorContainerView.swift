@@ -114,6 +114,9 @@ extension RobotEditorContainerView {
                     config.sceneReconstruction = .mesh
                 }
                 arView.cameraMode = .ar
+                // Show the live camera feed. The `.black` background set in 3D mode
+                // persists and would otherwise leave the AR screen fully black.
+                arView.environment.background = .cameraFeed(exposureCompensation: 0)
                 arView.session.run(config)
                 builder.root.isEnabled = false // hidden until the user taps a flat surface
                 builder.resetToOrigin()
@@ -217,7 +220,13 @@ extension RobotEditorContainerView {
             }
             builder.place(at: result.worldTransform)
             builder.root.isEnabled = true
-            onStatus("Robot diletakkan! Sentuh permukaan lain untuk memindahkan")
+            // Report the real-world dimensions so the kid can verify the size
+            // (e.g. a 1 m Panjang really is 1 m on the floor — ARKit is metric).
+            if let s = lastConfig?.bodySize {
+                onStatus(String(format: "Diletakkan pada ukuran asli: %.2f × %.2f × %.2f m. Sentuh permukaan lain untuk memindahkan.", s.length, s.width, s.height))
+            } else {
+                onStatus("Robot diletakkan! Sentuh permukaan lain untuk memindahkan")
+            }
         }
 
         // MARK: Config diff
