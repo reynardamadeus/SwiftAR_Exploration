@@ -66,6 +66,12 @@ struct HomeView: View {
                         Text("Scan Real Environment")
                             .foregroundStyle(Color.green)
                     }
+                    NavigationLink(
+                        destination: MissionListView()
+                    ) {
+                        Text("Misi")
+                            .foregroundStyle(Color.purple)
+                    }
                 }
 
             }

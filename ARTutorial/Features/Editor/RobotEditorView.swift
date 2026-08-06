@@ -67,6 +67,9 @@ struct RobotEditorView: View {
         .onChange(of: viewMode) { _, newMode in
             if newMode != .ar { status = "" }
         }
+        .onChange(of: config) { _, newConfig in
+            RobotGarage.shared.config = newConfig
+        }
     }
 
     // MARK: Bottom panel (mode selector + controls)
