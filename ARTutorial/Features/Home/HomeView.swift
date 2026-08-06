@@ -46,6 +46,16 @@ struct HomeView: View {
                         Text("Truck")
                     }
                 }
+                
+                Text("Try LIDAR Scanner")
+                List {
+                    NavigationLink(
+                        destination: RoboticsARView()
+                            .ignoresSafeArea(.all)
+                    ) {
+                        Text("Detect Real life Objects to Virtual")
+                    }
+                }
 
                 List {
                     NavigationLink(

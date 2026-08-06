@@ -7,7 +7,7 @@ options:
 
 
 targets:
-  Hijauin:
+  ARTutorial:
     type: application
     platform: iOS
     
@@ -24,7 +24,6 @@ targets:
       PRODUCT_BUNDLE_IDENTIFIER: com.ar.tutorial
 
     info:
-      path: Info.plist
       properties:
         UILaunchScreen: {}
         UIRequiresFullScreen: true

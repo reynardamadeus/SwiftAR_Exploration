@@ -26,6 +26,7 @@ enum WheelFactory {
     private static let baseHeight: Float = 0.03
 
     /// A wheel for the type. `.none` returns a tappable placeholder.
+    @MainActor
     static func makeWheel(for type: RobotConfig.WheelType, scaleMultiplier: Float = 1) -> ModelEntity {
         switch type {
         case .none:

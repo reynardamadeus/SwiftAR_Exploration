@@ -93,7 +93,7 @@ final class RobotBuilder {
 
     /// Swap the wheel in a slot. `.none` installs a tappable placeholder ghost,
     /// so an empty slot can still be selected and refilled.
-    func setWheel(type: RobotConfig.WheelType, on slot: WheelSlot, scale: Float) {
+    @MainActor func setWheel(type: RobotConfig.WheelType, on slot: WheelSlot, scale: Float) {
         guard let slotEntity = slots[slot] else { return }
         slotEntity.children.forEach { $0.removeFromParent() }
         slotEntity.addChild(WheelFactory.makeWheel(for: type, scaleMultiplier: scale))
