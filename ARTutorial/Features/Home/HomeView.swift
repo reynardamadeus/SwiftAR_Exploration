@@ -68,6 +68,17 @@ struct HomeView: View {
                     }
                 }
 
+                Text("Missions")
+                List {
+                    NavigationLink(
+                        destination: Mission1ScreenView()
+                            .ignoresSafeArea(.all)
+                    ) {
+                        Text("Mission 1 — Tanjakan")
+                            .foregroundStyle(Color.orange)
+                    }
+                }
+
             }
             .navigationTitle("Try AR Experience!")
         }

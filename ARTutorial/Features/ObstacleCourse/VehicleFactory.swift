@@ -56,7 +56,7 @@ enum VehicleFactory {
         let container = RobotEntity()
 
         // Convert editor-scale body dimensions to world metres (toy scale).
-        let s = RobotGeometry.arScale
+        let s: Float = 1.0
         let bodySize = SIMD3<Float>(
             config.bodySize.length * s,
             config.bodySize.height * s,
