@@ -22,17 +22,25 @@
 import SwiftUI
 import RealityKit
 import ARKit
- 
+import Combine
 // MARK: - SwiftUI entry point
+
+final class BallTelemetry: ObservableObject {
+    @Published var hasBall: Bool = false
+    @Published var heightAboveSurface: Float = 0   // meters above the tapped surface
+    @Published var isSettled: Bool = false         // true once it comes to rest
+    @Published var hasTable: Bool = false          // true once a table plane is found
+
+}
+
  
 struct RoboticsARView: UIViewRepresentable {
- 
-    func makeCoordinator() -> RoboticsARCoordinator { RoboticsARCoordinator() }
+    let telemetry: BallTelemetry
+    func makeCoordinator() -> RoboticsARCoordinator { RoboticsARCoordinator(telemetry: telemetry) }
  
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero)
  
-        // LiDAR scene reconstruction with semantic labels + horizontal planes.
         let config = ARWorldTrackingConfiguration()
         if ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) {
             config.sceneReconstruction = .meshWithClassification
@@ -41,105 +49,175 @@ struct RoboticsARView: UIViewRepresentable {
         config.environmentTexturing = .automatic
         arView.session.run(config)
  
-        // Let virtual entities collide with the real world mesh automatically.
         arView.environment.sceneUnderstanding.options.insert(.collision)
         arView.environment.sceneUnderstanding.options.insert(.physics)
  
         // --- Debug visualization (comment out for production) ---
-        // Colored overlay of the live LiDAR mesh as it's scanned.
         arView.debugOptions.insert(.showSceneUnderstanding)
-        // Wireframes of every collision shape + contact points. This is the
-        // direct proof that the mesh and obstacle boxes are colliders.
         arView.debugOptions.insert(.showPhysics)
  
         context.coordinator.attach(to: arView)
         return arView
     }
  
-    func updateUIView(_ uiView: ARView, context: Context) {}
-}
+    func updateUIView(_ uiView: ARView, context: Context) {}}
  
 // MARK: - Coordinator
- 
+  
 final class RoboticsARCoordinator: NSObject, ARSessionDelegate {
+ 
+    private let telemetry: BallTelemetry
  
     private weak var arView: ARView?
     private var obstacleManager: ObstacleEntityManager?
     private let detector = TabletopObstacleDetector()
  
-    /// The table the robot drives on. Set once the user taps to place the model.
+    /// The table the ball/robot rests on. Auto-detected from horizontal planes.
     private var tablePlane: TablePlane?
+    /// Area of the best table plane seen so far (to keep picking the largest).
+    private var bestTableArea: Float = 0
  
-    /// Throttle: run detection at most this often.
+    // Detection throttle.
     private let detectionInterval: TimeInterval = 0.5
     private var lastDetection: TimeInterval = 0
     private let workQueue = DispatchQueue(label: "obstacle.detection", qos: .userInitiated)
     private var isDetecting = false
+ 
+    // Single test ball + height tracking.
+    private let ballRadius: Float = 0.03
+    private var ball: ModelEntity?
+    private var placedAnchor: AnchorEntity?
+    private var ballGroundY: Float = 0     // fallback reference if no table yet
+    private var lastHeight: Float?
+    private var updateSub: Cancellable?
+ 
+    init(telemetry: BallTelemetry) {
+        self.telemetry = telemetry
+    }
  
     @MainActor
     func attach(to arView: ARView) {
         self.arView = arView
         arView.session.delegate = self
  
-        // Obstacles are parented to a world anchor so they stay put.
         let anchor = AnchorEntity(world: .zero)
         arView.scene.addAnchor(anchor)
         self.obstacleManager = ObstacleEntityManager(root: anchor)
  
-        // Tap to drop a physics ball — the visual proof that collision works.
         let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         arView.addGestureRecognizer(tap)
+ 
+        updateSub = arView.scene.subscribe(to: SceneEvents.Update.self) { [weak self] event in
+            self?.trackBallHeight(deltaTime: Float(event.deltaTime))
+        }
     }
  
-    /// Drops a dynamic sphere at the tapped point. Watch it fall and bounce
-     /// off the obstacle boxes and the real-world LiDAR mesh.
-     @MainActor
-     @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-         guard let arView else { return }
-         let screenPoint = gesture.location(in: arView)
-  
-         // Figure out where in the world the tap lands.
-         let spawn: SIMD3<Float>
-         if let hit = arView.raycast(from: screenPoint,
-                                     allowing: .estimatedPlane,
-                                     alignment: .any).first {
-             // 20 cm above the surface we tapped, so it visibly drops.
-             spawn = hit.worldTransform.position + SIMD3<Float>(0, 0.20, 0)
-         } else {
-             // Fallback: 25 cm in front of the camera (note: forward, not -forward).
-             let camera = arView.cameraTransform
-             spawn = camera.translation + camera.matrix.forward * 0.25
-         }
-  
-         let radius: Float = 0.03
-         let ball = ModelEntity(
-             mesh: .generateSphere(radius: radius),
-             materials: [SimpleMaterial(color: .systemRed, isMetallic: false)]
-         )
-         let shape = ShapeResource.generateSphere(radius: radius)
-         ball.collision = CollisionComponent(shapes: [shape])
-         ball.physicsBody = PhysicsBodyComponent(shapes: [shape], mass: 0.2, mode: .dynamic)
-  
-         let anchor = AnchorEntity(world: spawn)
-         anchor.addChild(ball)
-         arView.scene.addAnchor(anchor)
-     }
+    // MARK: Auto table-plane detection
  
-    /// Call this from your placement gesture once the robot is placed on a plane.
-    /// `planeAnchor` is the ARPlaneAnchor the robot was dropped onto.
+    func session(_ session: ARSession, didAdd anchors: [ARAnchor]) { considerPlanes(anchors) }
+    func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) { considerPlanes(anchors) }
+ 
+    /// Adopt the largest horizontal plane (preferring ones ARKit labels a table)
+    /// as the single height reference.
+    private func considerPlanes(_ anchors: [ARAnchor]) {
+        for plane in anchors.compactMap({ $0 as? ARPlaneAnchor })
+        where plane.alignment == .horizontal {
+            let area = plane.planeExtent.width * plane.planeExtent.height
+            let isTable = plane.classification == .table
+            // Take it if it's the biggest so far, or a table nearly as big.
+            guard area > bestTableArea || (isTable && area > bestTableArea * 0.6) else { continue }
+            bestTableArea = max(bestTableArea, area)
+ 
+            let c = plane.transform.transformPoint(plane.center)
+            let table = TablePlane(
+                height: c.y,
+                center: SIMD2(c.x, c.z),
+                halfExtent: SIMD2(plane.planeExtent.width / 2, plane.planeExtent.height / 2)
+            )
+            tablePlane = table
+            if !telemetry.hasTable { telemetry.hasTable = true }
+        }
+    }
+ 
+    // MARK: Tap → single ball
+ 
     @MainActor
-    func setTable(from planeAnchor: ARPlaneAnchor) {
-        let t = planeAnchor.transform
-        let worldCenter = t.transformPoint(planeAnchor.center)
-        tablePlane = TablePlane(
-            height: worldCenter.y,
-            center: SIMD2(worldCenter.x, worldCenter.z),
-            halfExtent: SIMD2(planeAnchor.planeExtent.width / 2,
-                              planeAnchor.planeExtent.height / 2)
+    @objc func handleTap(_ gesture: UITapGestureRecognizer) {
+        guard let arView else { return }
+        let screenPoint = gesture.location(in: arView)
+ 
+        // Prefer a hit on a REAL detected plane (accurate Y); fall back to an
+        // estimated plane only if none exists yet.
+        let hit = arView.raycast(from: screenPoint,
+                                 allowing: .existingPlaneGeometry,
+                                 alignment: .horizontal).first
+            ?? arView.raycast(from: screenPoint,
+                              allowing: .estimatedPlane,
+                              alignment: .any).first
+ 
+        let spawn: SIMD3<Float>
+        if let hit {
+            let p = hit.worldTransform.columns.3
+            ballGroundY = p.y
+            spawn = SIMD3(p.x, p.y + 0.20, p.z)   // 20 cm above the tapped point
+        } else {
+            let camera = arView.cameraTransform
+            spawn = camera.translation + camera.matrix.forward * 0.25
+            ballGroundY = spawn.y - 0.20
+        }
+ 
+        // Keep only one ball.
+        if let old = placedAnchor {
+            arView.scene.removeAnchor(old)
+            placedAnchor = nil
+            ball = nil
+        }
+ 
+        let newBall = ModelEntity(
+            mesh: .generateSphere(radius: ballRadius),
+            materials: [SimpleMaterial(color: .systemRed, isMetallic: false)]
         )
+        let shape = ShapeResource.generateSphere(radius: ballRadius)
+        newBall.collision = CollisionComponent(shapes: [shape])
+        newBall.physicsBody = PhysicsBodyComponent(shapes: [shape], mass: 0.2, mode: .dynamic)
+ 
+        let anchor = AnchorEntity(world: spawn)
+        anchor.addChild(newBall)
+        arView.scene.addAnchor(anchor)
+ 
+        // Assign to properties (a local `let ball` previously shadowed these,
+        // leaving self.ball nil so tracking never ran). Reset the tracker.
+        self.ball = newBall
+        self.placedAnchor = anchor
+        self.lastHeight = nil
+ 
+        telemetry.hasBall = true
+        telemetry.isSettled = false
     }
  
-    // MARK: ARSessionDelegate
+    // MARK: Height tracking
+ 
+    @MainActor
+    private func trackBallHeight(deltaTime: Float) {
+        guard let ball else { return }
+ 
+        let worldY = ball.position(relativeTo: nil).y
+        // Measure against the fixed table plane when we have it (no distance
+        // drift); otherwise fall back to the tapped surface height.
+        let reference = tablePlane?.height ?? ballGroundY
+        let height = worldY - reference - ballRadius   // 0 when resting on the surface
+ 
+        var speed: Float = 0
+        if let last = lastHeight, deltaTime > 0 {
+            speed = (worldY - last) / deltaTime
+        }
+        lastHeight = worldY
+ 
+        telemetry.heightAboveSurface = height
+        telemetry.isSettled = abs(speed) < 0.01 && height < 0.005
+    }
+ 
+    // MARK: ARSessionDelegate — obstacle detection
  
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         let now = frame.timestamp
@@ -147,7 +225,6 @@ final class RoboticsARCoordinator: NSObject, ARSessionDelegate {
               let plane = tablePlane else { return }
         lastDetection = now
  
-        // Snapshot mesh anchors on the main actor, cluster off-thread.
         let meshAnchors = frame.anchors.compactMap { $0 as? ARMeshAnchor }
         guard !meshAnchors.isEmpty else { return }
  

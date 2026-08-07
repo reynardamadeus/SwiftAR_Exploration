@@ -68,7 +68,7 @@ struct RobotEditorView: View {
             if newMode != .ar { status = "" }
         }
         .onChange(of: config) { _, newConfig in
-            RobotGarage.shared.config = newConfig
+//             RobotGarage.shared.config = newConfig
         }
     }
 

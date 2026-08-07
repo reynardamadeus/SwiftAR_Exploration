@@ -50,7 +50,7 @@ struct HomeView: View {
                 Text("Try LIDAR Scanner")
                 List {
                     NavigationLink(
-                        destination: RoboticsARView()
+                        destination: RoboticsARScreen()
                             .ignoresSafeArea(.all)
                     ) {
                         Text("Detect Real life Objects to Virtual")
@@ -76,24 +76,24 @@ struct HomeView: View {
                         Text("Scan Real Environment")
                             .foregroundStyle(Color.green)
                     }
-                    NavigationLink(
-                        destination: MissionListView()
-                    ) {
-                        Text("Misi")
-                            .foregroundStyle(Color.purple)
-                    }
+//                    NavigationLink(
+//                        destination: MissionListView()
+//                    ) {
+//                        Text("Misi")
+//                            .foregroundStyle(Color.purple)
+//                    }
                 }
 
                 Text("Missions")
-                List {
-                    NavigationLink(
-                        destination: Mission1ScreenView()
-                            .ignoresSafeArea(.all)
-                    ) {
-                        Text("Mission 1 — Tanjakan")
-                            .foregroundStyle(Color.orange)
-                    }
-                }
+//                List {
+//                    NavigationLink(
+//                        destination: Mission1ScreenView()
+//                            .ignoresSafeArea(.all)
+//                    ) {
+//                        Text("Mission 1 — Tanjakan")
+//                            .foregroundStyle(Color.orange)
+//                    }
+//                }
 
             }
             .navigationTitle("Try AR Experience!")

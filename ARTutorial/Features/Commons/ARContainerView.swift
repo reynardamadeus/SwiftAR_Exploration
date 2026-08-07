@@ -32,6 +32,7 @@ struct ARContainerView: UIViewRepresentable {
         if(enableGesture){
             let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
             aRView.addGestureRecognizer(tapGesture)
+            
 //            let pinchGesture = UIPinchGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePinch(_:)))
 //            aRView.addGestureRecognizer(pinchGesture)
         }else{
